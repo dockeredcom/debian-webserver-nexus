@@ -1,0 +1,58 @@
+/*
+*
+*   Yves Vindevogel
+*   2018-09-09
+*   Version 1.0.0
+*
+*   This is a standard Gradle script, but without declaring tasks.
+*   We use Gradle for its capabilities to download dependencies automatically.
+*
+*   All parameters needed in this script, are given as ENV variables in the Dockerfile.
+*
+ */
+
+def nexusUrl = "${System.env.NEXUS_URL}"
+def nexusGroup = "${System.env.NEXUS_GROUP}"
+def nexusArtifact = "${System.env.NEXUS_ARTIFACT}"
+def nexusVersion = "${System.env.NEXUS_VERSION}"
+
+def nexusUser = "${System.env.NEXUS_USER}"
+def nexusPassword = "${System.env.NEXUS_PASSWORD}"
+
+repositories {
+    maven {
+        credentials {
+                username "${nexusUser}"
+                password "${nexusPassword}"
+        }
+
+        url "${nexusUrl}"
+    }
+
+}
+
+configurations {
+    website {}
+}
+
+dependencies {
+    website   group: "${nexusGroup}", name: "${nexusArtifact}", version: "${nexusVersion}"
+}
+
+project.copy {
+    from configurations.website
+    into "/tmp"
+}
+
+project.configurations.website.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+    def zipFileName = "/tmp/${artifact.file.name}"
+    def zipFile = new File(zipFileName)
+    def outputDir = new File("/srv/nginx")
+
+    project.copy {
+        from zipTree(zipFile)
+        into outputDir
+    }
+
+    zipFile.delete()
+}
